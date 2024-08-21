@@ -6,6 +6,8 @@ from sklearn.linear_model import LogisticRegression
 
 from tsk.clustering import CMeansClustering
 
+from scipy.special import expit  # Sigmoid function
+
 
 def compute_firing_level(data: np.ndarray, centers: int, delta: float) -> np.ndarray:
     """
@@ -43,11 +45,10 @@ def apply_firing_level(x: np.ndarray, firing_levels: np.ndarray, order: int = 1)
 
         return output
 
-
 class Classifier:
-    def __init__(self, c: float = 1., max_iters: int = 200, n_cluster: int = 2, order: int = 1):
+    def __init__(self, c: float = 1., max_iters: int = 10000, n_cluster: int = 2, order: int = 1):
         """
-        Fuzzy classifier class
+        Fuzzy classifier class for binary classification
 
         :param c: (float) c-coefficient for linear regressor estimator
         :param max_iters: (int) max iters for logistic regression fitting
@@ -59,7 +60,6 @@ class Classifier:
         self._n_clusters = n_cluster
         self._order = order
 
-        self._n_classes = None
         self._center = None
         self._variance = None
         self._regression = None
@@ -68,11 +68,9 @@ class Classifier:
         """
         Fit a set of measurements to the model
         :param x: (np.ndarray) Vector with inputs
-        :param y: (np.array) Vector with measurements
+        :param y: (np.array) Vector with measurements (binary labels)
         :return: (Classifier) self
         """
-        self._n_classes = len(np.unique(y))
-
         cluster = CMeansClustering(self._n_clusters).fit(x, y)
 
         self._center = cluster.center
@@ -81,6 +79,7 @@ class Classifier:
         mu_a = compute_firing_level(x, self._center, self._variance)
         computed_input = apply_firing_level(x, mu_a, self._order)
 
+        # Logistic regression for binary classification
         self._regression = LogisticRegression(C=self._c, max_iter=self._max_iters)
         self._regression.fit(computed_input, y)
 
@@ -88,15 +87,17 @@ class Classifier:
 
     def predict(self, x: np.ndarray) -> np.ndarray:
         """
-        Predict to which class a given set of inputs belongs
+        Predict to which class a given set of inputs belongs (binary classification)
 
         :param x: (np.ndarray) Input vector
-        :return: (np.ndarray) Output vector with predicted classes
+        :return: (np.ndarray) Output vector with predicted classes (0 or 1)
         """
         firing_levels = compute_firing_level(x, self._center, self._variance)
-
         computed_input = apply_firing_level(x, firing_levels, self._order)
 
+        # Decision function gives logit values
         logits = self._regression.decision_function(computed_input)
 
-        return np.argmax(softmax(logits, axis=1), axis=1)
+        # For binary classification, use sigmoid function and threshold at 0.5
+        probabilities = expit(logits)  # Sigmoid function
+        return (probabilities > 0.5).astype(int)  # Return 0 or 1 based on threshold
