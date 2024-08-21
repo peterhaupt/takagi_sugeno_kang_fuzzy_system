@@ -40,11 +40,11 @@ def main():
     print(f'Loaded dataset from: {flags.dataset}')
 
     # prepare train/test split
-    x_train = x[:125]
-    y_train = y[:125]
+    x_train = x[:400]
+    y_train = y[:400]
 
-    x_test = x[125:]
-    y_test = y[125:]
+    x_test = x[400:]
+    y_test = y[400:]
 
     print(f'Number of training samples: {len(x_train)}')
     print(f'Number of test samples: {len(x_test)}')
